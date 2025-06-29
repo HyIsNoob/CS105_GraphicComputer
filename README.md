@@ -18,10 +18,10 @@
 
 | Thành viên | MSSV | Vai trò & Đóng góp |
 |------------|------|-------------------|
-| **🏆 Nguyễn Khang Hy** | 23520662 | **Trưởng nhóm & Lập trình viên chính**<br/>• Phát triển Engine cốt lõi<br/>• Xây dựng hoàn chỉnh hệ thống Shader<br/>• Hệ thống Animation & Physics nâng cao<br/>• Tối ưu hiệu năng & Thiết kế kiến trúc<br/>• Tài liệu kỹ thuật & Thuyết trình |
-| **Phùng Văn Đạt** | 22520234 | **Lập trình Gameplay**<br/>• Triển khai logic trò chơi<br/>• Phát triển hệ thống AI<br/>• Kiểm thử & Sửa lỗi |
-| **Lê Văn Giáp** | 22520363 | **Lập trình Đồ họa**<br/>• Tích hợp mô hình 3D<br/>• Hệ thống phát hiện va chạm<br/>• Hỗ trợ hiệu ứng thị giác |
-| **Trần Giang Sư** | 22522166 | **Lập trình Audio & Giao diện**<br/>• Tích hợp hệ thống âm thanh<br/>• Phát triển giao diện người dùng<br/>• Hỗ trợ hiệu ứng post-processing |
+| **🏆 Nguyễn Khang Hy** | 23520662 | **Lập trình chính**<br/>• Phát triển Engine cốt lõi<br/>• Hệ thống Animation & Physics nâng cao<br/>• Tạo map cho game <br/>• Tích hợp hệ thống âm thanh <br/>• Tích hợp mô hình 3D <br/>• Phát triển hệ thống AI  |
+| **Phùng Văn Đạt** | 22520234 | **Lập trình Gameplay**<br/>• Triển khai logic trò chơi<br/>• Xây dựng hoàn chỉnh hệ thống Shader <br/>• Kiểm thử & Sửa lỗi <br/>• Tối ưu hiệu năng & Thiết kế kiến trúc|
+| **Lê Văn Giáp** | 22520363 | **Lập trình Đồ họa**<br/>• Hệ thống phát hiện va chạm<br/>• Hỗ trợ hiệu ứng thị giác |
+| **Trần Giang Sư** | 22522166 | **Lập trình Giao diện**<br/>• Phát triển giao diện người dùng<br/>• Hỗ trợ hiệu ứng post-processing |
 
 **Giảng viên hướng dẫn:** ThS. Cấp Phạm Đình Thắng  
 **Lớp:** CS105.P22  
@@ -31,7 +31,7 @@
 
 ## 🎯 Tổng quan dự án
 
-**The Backrooms** là một trải nghiệm kinh dị 3D được phát triển hoàn toàn bằng **Three.js** và **WebGL**, tái hiện không gian đáng sợ và bí ẩn của "Backrooms" - một hiện tượng internet nổi tiếng. Dự án thể hiện sự ứng dụng sâu sắc các kỹ thuật đồ hoạ máy tính hiện đại, được xây dựng từ đầu bởi trưởng nhóm **Nguyễn Khang Hy**.
+**The Backrooms** là một trải nghiệm kinh dị 3D được phát triển hoàn toàn bằng **Three.js** và **WebGL**, tái hiện không gian đáng sợ và bí ẩn của "Backrooms" - một hiện tượng internet nổi tiếng. Dự án thể hiện sự ứng dụng sâu sắc các kỹ thuật đồ hoạ máy tính hiện đại.
 
 ### ✨ Điểm nổi bật
 - 🎨 **6 Shader tùy chỉnh** được viết hoàn toàn từ đầu với GLSL
@@ -269,9 +269,6 @@ Backrooms-Game/
 
 ## 🎓 **Thành tựu & Triển khai Kỹ thuật**
 
-### 🏆 **Điểm nổi bật Phát triển Cốt lõi**
-*Được triển khai bởi **Nguyễn Khang Hy** - Lập trình viên chính*
-
 #### 🎨 **Lập trình Shader Nâng cao**
 - **6 GLSL Shader tùy chỉnh** viết từ đầu với các kỹ thuật:
   - Tối ưu fragment shader cho hiệu năng
@@ -439,7 +436,6 @@ Hệ thống Audio/UI: ~500 dòng
 - Tài liệu hóa: 1 tuần
 
 ### 👥 **Hợp tác Nhóm**
-Mặc dù chủ yếu được phát triển bởi **Nguyễn Khang Hy**, nhóm đã cung cấp hỗ trợ quý giá:
 - **Code review và kiểm thử** bởi các thành viên nhóm
 - **Tích hợp asset** và triển khai tính năng cơ bản
 - **Hỗ trợ tài liệu** và chuẩn bị thuyết trình
