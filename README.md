@@ -436,7 +436,6 @@ Hệ thống Audio/UI: ~500 dòng
 - Tài liệu hóa: 1 tuần
 
 ### 👥 **Hợp tác Nhóm**
-Mặc dù chủ yếu được phát triển bởi **Nguyễn Khang Hy**, nhóm đã cung cấp hỗ trợ quý giá:
 - **Code review và kiểm thử** bởi các thành viên nhóm
 - **Tích hợp asset** và triển khai tính năng cơ bản
 - **Hỗ trợ tài liệu** và chuẩn bị thuyết trình
