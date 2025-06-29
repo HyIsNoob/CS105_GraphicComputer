@@ -400,7 +400,7 @@ Backrooms-Game/
 
 ---
 
-### 📞 **Thông tin Liên hệ**
+### 📞 **Các đường dẫn**
 - **Repository**: [[GitHub Link](https://github.com/HyIsNoob/CS105_GraphicComputer)]
 - **Demo**: [[Link Demo trực tiếp](https://drive.google.com/file/d/1brc2R_6W8Wy-5CQ7RMRRmxshyZQgEdG-/view?usp=drive_link)]  
 - **Tài liệu**: [[Trang Wiki](https://drive.google.com/file/d/1pIifxtme1o0zXL_oUdHaVv939BXG82_2/view?usp=drive_link)]
@@ -410,16 +410,6 @@ Backrooms-Game/
 <img src="https://img.shields.io/badge/Built%20with-❤️-red?style=for-the-badge"/>
 
 </div>
-
-## 👨‍💻 **Góc nhìn & Đóng góp của Developer**
-
-**Đóng góp chính (70% codebase):**
-- ✅ **Hệ thống Shader hoàn chỉnh**: 6 GLSL shader tùy chỉnh từ đầu
-- ✅ **Engine Animation**: Hệ thống animation 7 trạng thái
-- ✅ **Logic Game cốt lõi**: Di chuyển player, phát hiện va chạm, cơ chế game
-- ✅ **Tối ưu hiệu năng**: Giới hạn FPS, điều chỉnh chất lượng, quản lý bộ nhớ
-- ✅ **Thiết kế kiến trúc**: Thiết kế hệ thống modular và tổ chức code
-- ✅ **Tài liệu kỹ thuật**: Comment code, README, và thông số kỹ thuật
 
 **Thống kê Phát triển:**
 ```
