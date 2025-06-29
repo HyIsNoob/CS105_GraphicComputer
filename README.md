@@ -18,10 +18,10 @@
 
 | Thành viên | MSSV | Vai trò & Đóng góp |
 |------------|------|-------------------|
-| **🏆 Nguyễn Khang Hy** | 23520662 | **Lập trình chính**<br/>• Phát triển Engine cốt lõi<br/>• Xây dựng hoàn chỉnh hệ thống Shader<br/>• Hệ thống Animation & Physics nâng cao<br/>• Tối ưu hiệu năng & Thiết kế kiến trúc<br/>• Tài liệu kỹ thuật |
-| **Phùng Văn Đạt** | 22520234 | **Lập trình Gameplay**<br/>• Triển khai logic trò chơi<br/>• Phát triển hệ thống AI<br/>• Kiểm thử & Sửa lỗi |
-| **Lê Văn Giáp** | 22520363 | **Lập trình Đồ họa**<br/>• Tích hợp mô hình 3D<br/>• Hệ thống phát hiện va chạm<br/>• Hỗ trợ hiệu ứng thị giác |
-| **Trần Giang Sư** | 22522166 | **Lập trình Audio & Giao diện**<br/>• Tích hợp hệ thống âm thanh<br/>• Phát triển giao diện người dùng<br/>• Hỗ trợ hiệu ứng post-processing |
+| **🏆 Nguyễn Khang Hy** | 23520662 | **Lập trình chính**<br/>• Phát triển Engine cốt lõi<br/>• Hệ thống Animation & Physics nâng cao<br/>• Tạo map cho game <br/>• Tích hợp hệ thống âm thanh <br/>• Tích hợp mô hình 3D <br/>• Phát triển hệ thống AI  |
+| **Phùng Văn Đạt** | 22520234 | **Lập trình Gameplay**<br/>• Triển khai logic trò chơi<br/>• Xây dựng hoàn chỉnh hệ thống Shader <br/>• Kiểm thử & Sửa lỗi <br/>• Tối ưu hiệu năng & Thiết kế kiến trúc|
+| **Lê Văn Giáp** | 22520363 | **Lập trình Đồ họa**<br/>• Hệ thống phát hiện va chạm<br/>• Hỗ trợ hiệu ứng thị giác |
+| **Trần Giang Sư** | 22522166 | **Lập trình Giao diện**<br/>• Phát triển giao diện người dùng<br/>• Hỗ trợ hiệu ứng post-processing |
 
 **Giảng viên hướng dẫn:** ThS. Cấp Phạm Đình Thắng  
 **Lớp:** CS105.P22  
