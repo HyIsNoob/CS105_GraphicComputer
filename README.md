@@ -31,7 +31,7 @@
 
 ## 🎯 Tổng quan dự án
 
-**The Backrooms** là một trải nghiệm kinh dị 3D được phát triển hoàn toàn bằng **Three.js** và **WebGL**, tái hiện không gian đáng sợ và bí ẩn của "Backrooms" - một hiện tượng internet nổi tiếng. Dự án thể hiện sự ứng dụng sâu sắc các kỹ thuật đồ hoạ máy tính hiện đại, được xây dựng từ đầu bởi trưởng nhóm **Nguyễn Khang Hy**.
+**The Backrooms** là một trải nghiệm kinh dị 3D được phát triển hoàn toàn bằng **Three.js** và **WebGL**, tái hiện không gian đáng sợ và bí ẩn của "Backrooms" - một hiện tượng internet nổi tiếng. Dự án thể hiện sự ứng dụng sâu sắc các kỹ thuật đồ hoạ máy tính hiện đại.
 
 ### ✨ Điểm nổi bật
 - 🎨 **6 Shader tùy chỉnh** được viết hoàn toàn từ đầu với GLSL
@@ -268,9 +268,6 @@ Backrooms-Game/
 ---
 
 ## 🎓 **Thành tựu & Triển khai Kỹ thuật**
-
-### 🏆 **Điểm nổi bật Phát triển Cốt lõi**
-*Được triển khai bởi **Nguyễn Khang Hy** - Lập trình viên chính*
 
 #### 🎨 **Lập trình Shader Nâng cao**
 - **6 GLSL Shader tùy chỉnh** viết từ đầu với các kỹ thuật:
