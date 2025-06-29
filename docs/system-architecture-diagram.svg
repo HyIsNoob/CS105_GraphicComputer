@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Arrow marker -->
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+     refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="500" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#333">
+    Sơ đồ kiến trúc hệ thống Game Backrooms
+  </text>  
+  <!-- INPUT -->
+  <rect x="50" y="70" width="120" height="50" rx="5" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+  <text x="110" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold">USER INPUT</text>
+  <text x="110" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">WASD, Shift, C</text>
+  
+  <!-- GAME LOGIC -->
+  <rect x="230" y="70" width="120" height="50" rx="5" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+  <text x="290" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold">GAME LOGIC</text>
+  <text x="290" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">keyState processing</text>
+  
+  <!-- ANIMATION SYSTEM -->
+  <rect x="410" y="70" width="120" height="50" rx="5" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+  <text x="470" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold">ANIMATION</text>
+  <text x="470" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">PlayerAnimator</text>
+  
+  <!-- 3D OUTPUT -->
+  <rect x="590" y="70" width="120" height="50" rx="5" fill="#e8f5e8" stroke="#388e3c" stroke-width="2"/>
+  <text x="650" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold">3D OUTPUT</text>
+  <text x="650" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">Model Movement</text>
+  
+  <!-- Main flow arrows -->
+  <line x1="170" y1="95" x2="230" y2="95" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="350" y1="95" x2="410" y2="95" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="530" y1="95" x2="590" y2="95" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Detailed Animation States -->
+  <text x="400" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">
+    Animation States (ANIMATION_STATES)
+  </text>
+  
+  <!-- State boxes -->
+  <rect x="80" y="190" width="80" height="30" rx="3" fill="#bbdefb" stroke="#1976d2"/>
+  <text x="120" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">IDLE</text>
+  
+  <rect x="180" y="190" width="80" height="30" rx="3" fill="#bbdefb" stroke="#1976d2"/>
+  <text x="220" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">WALKING</text>
+  
+  <rect x="280" y="190" width="80" height="30" rx="3" fill="#bbdefb" stroke="#1976d2"/>
+  <text x="320" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">RUNNING</text>
+  
+  <rect x="380" y="190" width="80" height="30" rx="3" fill="#bbdefb" stroke="#1976d2"/>
+  <text x="420" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">CROUCHING</text>
+  
+  <rect x="480" y="190" width="100" height="30" rx="3" fill="#bbdefb" stroke="#1976d2"/>
+  <text x="530" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">CROUCH_WALK</text>
+  
+  <rect x="600" y="190" width="100" height="30" rx="3" fill="#bbdefb" stroke="#1976d2"/>
+  <text x="650" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">WALK_BACKWARD</text>
+  
+  <!-- Connection from Animation to States -->
+  <line x1="470" y1="120" x2="400" y2="190" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Core Functions -->
+  <text x="400" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">
+    Core System Functions (main.js)
+  </text>
+  
+  <!-- Function boxes -->
+  <rect x="50" y="290" width="140" height="50" rx="5" fill="#ffecb3" stroke="#ff8f00" stroke-width="1"/>
+  <text x="120" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold">update()</text>
+  <text x="120" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="9">Main game loop</text>
+  
+  <rect x="210" y="290" width="140" height="50" rx="5" fill="#ffecb3" stroke="#ff8f00" stroke-width="1"/>
+  <text x="280" y="305" text-anchor="middle" font-family="Arial, sans-serif" font-size="10">updateMovementAnimation()</text>
+  <text x="280" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="9">isMoving, isRunning</text>
+  <text x="280" y="330" text-anchor="middle" font-family="Arial, sans-serif" font-size="9">isCrouching, isMovingBackward</text>
+  
+  <rect x="370" y="290" width="140" height="50" rx="5" fill="#ffecb3" stroke="#ff8f00" stroke-width="1"/>
+  <text x="440" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold">playAnimation()</text>
+  <text x="440" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="9">Crossfade transitions</text>
+  
+  <rect x="530" y="290" width="140" height="50" rx="5" fill="#ffecb3" stroke="#ff8f00" stroke-width="1"/>
+  <text x="600" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold">mixer.update()</text>
+  <text x="600" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="9">THREE.AnimationMixer</text>
+  
+  <!-- Game Loop -->
+  <path d="M 700 340 Q 750 380 750 420 Q 750 450 400 450 Q 50 450 50 400 Q 50 370 50 340" 
+        stroke="#d32f2f" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+  <text x="400" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#d32f2f" font-weight="bold">
+    60 FPS Game Loop (requestAnimationFrame)
+  </text>
+  
+  <!-- Caption -->
+  <text x="400" y="485" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666" font-style="italic">
+    Hình X.1: Sơ đồ kiến trúc hệ thống - Luồng xử lý từ Input người dùng đến Output chuyển động 3D
+  </text>
+  
+</svg>
+</svg>
