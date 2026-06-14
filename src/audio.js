@@ -62,7 +62,7 @@ function playRandomMusic() {
   const idx = Math.floor(Math.random() * musicAudios.length);
   currentMusic = musicAudios[idx];
   currentMusic.volume = musicVolume;
-  currentMusic.play();
+  currentMusic.play().catch(() => {});
 }
 
 function stopMusic() {
@@ -89,7 +89,7 @@ function playSFX(name, volumeOverride = null) {
   if (audio) {
     audio.currentTime = 0;
     audio.volume = volumeOverride !== null ? volumeOverride : sfxVolume;
-    audio.play();
+    audio.play().catch(() => {});
   }
 }
 
@@ -98,7 +98,7 @@ function playSCPSound() {
     const audio = sfxAudios['scpsounds'];
     if (audio) {
       audio.volume = minScpSoundVolume;
-      audio.play();
+      audio.play().catch(() => {});
       scpSoundEnabled = true;
     }
   }
@@ -140,5 +140,6 @@ export default {
   stopSCPSound,
   updateSCPSoundVolume,
   get musicVolume() { return musicVolume; },
-  get sfxVolume() { return sfxVolume; }
+  get sfxVolume() { return sfxVolume; },
+  get scpSoundEnabled() { return scpSoundEnabled; }
 };

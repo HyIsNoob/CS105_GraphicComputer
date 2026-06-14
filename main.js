@@ -108,8 +108,16 @@ var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHei
 var renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "default" });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 
-renderer.setPixelRatio(window.devicePixelRatio * 0.5);
+function setRenderScale(percent) {
+    const scale = THREE.MathUtils.clamp(percent / 100, 0.2, 1);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
+}
+
+setRenderScale(50);
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -223,15 +231,15 @@ const bloomControls = {
 };
 
 // Đặt khai báo playerSettings lên trước khi add control vào GUI
-const playerSettings = { baseSpeed: 0.01 };
+const playerSettings = { baseSpeed: 2.4 };
 
 // Thêm control cho rotationSpeed
 graphicSettings.add(guicontrols, "pixelratio", 20, 100, 5).onChange((value) => {
-    renderer.setPixelRatio(window.devicePixelRatio * (value / 100));
+    setRenderScale(value);
 }).name("Pixel Ratio (%)").listen();
 
 // Thêm control cho Movement Speed
-gameplaySettings.add(playerSettings, "baseSpeed", 0.005, 0.05, 0.001).onChange((value) => {
+gameplaySettings.add(playerSettings, "baseSpeed", 0.8, 6.0, 0.1).onChange((value) => {
     playerSettings.baseSpeed = value;
 }).name("Movement Speed").listen();
 
@@ -418,7 +426,7 @@ gameplaySettings.close();
 
 
 // Tạo ánh sáng và thêm nó vào scene ở trên cùng và thêm bóng tối cho renderer
-const light = new THREE.DirectionalLight(0x222222, 0.9);
+const light = new THREE.DirectionalLight(0xfff1c4, 0.85);
 light.position.set(0, 10, 0);
 light.castShadow = true;
 light.shadow.mapSize.width = 1024;
@@ -428,17 +436,26 @@ light.shadow.camera.far = mazeHeight + 1;
 light.shadow.bias = 0.002;
 scene.add(light);
 
+const hemisphereLight = new THREE.HemisphereLight(0xfff4c9, 0x1b1a14, 0.18);
+scene.add(hemisphereLight);
+
 // pointer lock controls
 const controls = new PointerLockControls(camera, canvas)
 scene.add(controls.getObject()); 
 const startButton = document.getElementById('startButton')
 const menuPanel = document.getElementById('menuPanel')
+const respawnButton = document.createElement('button');
+respawnButton.id = 'respawnButton';
+respawnButton.innerText = 'Respawn';
+respawnButton.style.display = 'none';
+menuPanel.appendChild(respawnButton);
 startButton.addEventListener(
     'click',
     function () {
         controls.lock()
         // ẩn #startButton và #menuPanel
         startButton.style.display = 'none'
+        respawnButton.style.display = 'none'
         menuPanel.style.display = 'none'
         if (notStarted){
             startButton.innerHTML = "Click to Resume"
@@ -472,19 +489,23 @@ startButton.addEventListener(
     false
 )
 
+respawnButton.addEventListener('click', function () {
+    respawnPlayer();
+}, false);
+
 controls.addEventListener('lock', function () {
     startButton.style.display = 'none'
     menuPanel.style.display = 'none'
     paused = false;
-    requestAnimationFrame(update);
 })
 
 controls.addEventListener('unlock', function () {
-    startButton.style.display = 'block'
+    startButton.style.display = gameOver ? 'none' : 'block'
+    respawnButton.style.display = gameOver ? 'block' : 'none'
     menuPanel.style.display = 'block'
     paused = true;
     menuPanel.style.backdropFilter = "blur(0px)";
-    document.getElementById('title').style.display = 'none'
+    if (!gameOver) document.getElementById('title').style.display = 'none'
     Object.keys(keyState).forEach(function (key) {
         keyState[key] = false;
     });
@@ -579,6 +600,8 @@ window.addEventListener(
 // Khi cửa sổ được thay đổi kích thước, thay đổi kích thước canvas
 window.addEventListener('resize', function () {
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    bloomPass.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 });
@@ -631,14 +654,58 @@ document.addEventListener('keyup', function (event) {
     }
 });
 
+const collisionObjects = [];
+const collisionGrid = new Map();
+const collectibleObjects = [];
+const PLAYER_COLLIDER_SIZE = new THREE.Vector3(0.26, 1.0, 0.26);
+const MONSTER_COLLIDER_SIZE = new THREE.Vector3(0.42, 1.0, 0.42);
+
+function gridKeyFromWorld(x, z) {
+    return `${Math.round(x + MAP_WIDTH / 2)},${Math.round(z + MAP_HEIGHT / 2)}`;
+}
+
+function registerCollisionObject(object) {
+    if (!object || collisionObjects.includes(object)) return;
+    collisionObjects.push(object);
+    const key = gridKeyFromWorld(object.position.x, object.position.z);
+    if (!collisionGrid.has(key)) collisionGrid.set(key, []);
+    collisionGrid.get(key).push(object);
+}
+
+function unregisterCollisionObject(object) {
+    const index = collisionObjects.indexOf(object);
+    if (index !== -1) collisionObjects.splice(index, 1);
+    const key = gridKeyFromWorld(object.position.x, object.position.z);
+    const bucket = collisionGrid.get(key);
+    if (bucket) {
+        const bucketIndex = bucket.indexOf(object);
+        if (bucketIndex !== -1) bucket.splice(bucketIndex, 1);
+    }
+}
+
+function getNearbyCollisionObjects(position, radius = 2) {
+    const objects = [];
+    const cellX = Math.round(position.x + MAP_WIDTH / 2);
+    const cellZ = Math.round(position.z + MAP_HEIGHT / 2);
+    for (let z = cellZ - radius; z <= cellZ + radius; z++) {
+        for (let x = cellX - radius; x <= cellX + radius; x++) {
+            const bucket = collisionGrid.get(`${x},${z}`);
+            if (bucket) objects.push(...bucket);
+        }
+    }
+    return objects;
+}
+
 //FPS counter
 const stats = new Stats();
 document.body.appendChild(stats.dom);
 
 const wallTexture = textureLoader.load('./public/wallpaper.png', function (texture) {
     // Bật mipmapping cho texture
+    texture.colorSpace = THREE.SRGBColorSpace;
     texture.generateMipmaps = true;
-    texture.minFilter = THREE.NearestMipmapNearestFilter ;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
 
@@ -648,8 +715,9 @@ const wallTexture = textureLoader.load('./public/wallpaper.png', function (textu
 });
 const baseboardTexture = textureLoader.load('./public/baseboard.jpg', function (texture) {
     // Bật mipmapping cho texture
+    texture.colorSpace = THREE.SRGBColorSpace;
     texture.generateMipmaps = true;
-    texture.minFilter = THREE.NearestMipmapNearestFilter ;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
     // tăng hiệu suất
     texture.anisotropy = 16;
     texture.wrapS = THREE.RepeatWrapping;
@@ -729,6 +797,7 @@ function buildWalls() {
                 wall.add(baseboard);
                 
                 scene.add(wall);
+                registerCollisionObject(wall);
             }        
         }
     }
@@ -786,6 +855,7 @@ function buildColumns() {
                 column.userData.cellType = 'column';
                 column.identifier = "0,0,column"; // Keep for compatibility
                 scene.add(column);
+                registerCollisionObject(column);
             }
         }
     }
@@ -805,8 +875,14 @@ function buildDoors() {
                 };
                 // Xác định hướng xoay
                 const rotationY = (cellValue === 22) ? Math.PI / 2 : 0;
-                loadDoor(scene, pos, (door, mixer, animator) => {
+                loadDoor(scene, pos, (door, mixer, animator, collider) => {
                     door.rotation.y = rotationY;
+                    if (collider) {
+                        collider.rotation.y = rotationY;
+                        collider.userData.collisionWidth = cellValue === 22 ? 0.18 : 0.95;
+                        collider.userData.collisionDepth = cellValue === 22 ? 0.95 : 0.18;
+                        registerCollisionObject(collider);
+                    }
                     door.userData.isMapObject = true;
                     door.userData.cellType = 'door';
                     door.userData.animator = animator;
@@ -815,15 +891,15 @@ function buildDoors() {
                     if (!window.doorAnimators) window.doorAnimators = [];
                     if (animator) window.doorAnimators.push(animator);
                     // Thêm tường phụ hai bên cửa
-                    let dx = 0.7, dz = 0;
+                    let dx = 0.48, dz = 0;
                     let sideWallGeometry, baseboardGeometrySide;
                     if (cellValue === 2) {
-                        sideWallGeometry = new THREE.BoxGeometry(wallSize, wallSize, 0.01);
-                        baseboardGeometrySide = new THREE.BoxGeometry(wallSize * 1.01, 0.065, 0.02);
+                        sideWallGeometry = new THREE.BoxGeometry(0.22, wallSize, 0.01);
+                        baseboardGeometrySide = new THREE.BoxGeometry(0.23, 0.065, 0.02);
                     } else {
-                        dx = 0; dz = 0.7;
-                        sideWallGeometry = new THREE.BoxGeometry(0.01, wallSize, wallSize);
-                        baseboardGeometrySide = new THREE.BoxGeometry(0.02, 0.065, wallSize * 1.01);
+                        dx = 0; dz = 0.48;
+                        sideWallGeometry = new THREE.BoxGeometry(0.01, wallSize, 0.22);
+                        baseboardGeometrySide = new THREE.BoxGeometry(0.02, 0.065, 0.23);
                     }
 
                     // Side wall 1
@@ -844,6 +920,7 @@ function buildDoors() {
                     baseboard1.receiveShadow = true;
                     sideWall1.add(baseboard1);
                     scene.add(sideWall1);
+                    registerCollisionObject(sideWall1);
 
                     // Side wall 2
                     const sideWall2 = new THREE.Mesh(sideWallGeometry, wallMaterial);
@@ -863,6 +940,7 @@ function buildDoors() {
                     baseboard2.receiveShadow = true;
                     sideWall2.add(baseboard2);
                     scene.add(sideWall2);
+                    registerCollisionObject(sideWall2);
                 });
             }
         }
@@ -881,12 +959,13 @@ function buildExitDoor() {
                     z: y - MAP_HEIGHT / 2
                 };
                 
-                loadEndingDoor(scene, pos, (door, mixer, animator) => {
+                loadEndingDoor(scene, pos, (door, mixer, animator, collider) => {
                     door.userData.isMapObject = true;
                     door.userData.cellType = 'exitDoor';
                     door.userData.animator = animator;
                     door.userData.mixer = mixer;
                     door.identifier = "0,0,exitDoor";
+                    if (collider) registerCollisionObject(collider);
                     if (!window.endingDoorAnimators) window.endingDoorAnimators = [];
                     if (animator) window.endingDoorAnimators.push(animator);
                 });
@@ -898,16 +977,24 @@ function buildExitDoor() {
 var wallSize = 1;
 
 const wallGeometry = new THREE.BoxGeometry(wallSize+0.000001, wallSize, wallSize+0.000001);
-const wallMaterial = new THREE.MeshPhongMaterial({ map: wallTexture });
+const wallMaterial = new THREE.MeshStandardMaterial({
+    map: wallTexture,
+    roughness: 0.88,
+    metalness: 0.0
+});
 const baseboardGeometry = new THREE.BoxGeometry(wallSize + 0.01, 0.065, wallSize + 0.01);
-const baseboardMaterial = new THREE.MeshPhongMaterial({ map: baseboardTexture, reflectivity: 0, shininess: 0 });
+const baseboardMaterial = new THREE.MeshStandardMaterial({
+    map: baseboardTexture,
+    roughness: 0.74,
+    metalness: 0.0
+});
 
 // Định nghĩa vật liệu sàn
-const floorMaterial = new THREE.MeshPhongMaterial({ 
+const floorMaterial = new THREE.MeshStandardMaterial({
     color: 0x4a4a4a, 
     map: floorTexture, 
-    shininess: 0, 
-    reflectivity: 0 
+    roughness: 0.96,
+    metalness: 0.0
 });
 
 // Định nghĩa vật liệu trần
@@ -920,9 +1007,9 @@ const ceilingMaterial = new THREE.MeshStandardMaterial({
 
 // Hình dạng và vật liệu ánh sáng cho hàm createLights
 const lightGeometry = new THREE.BoxGeometry(0.15, 0.01, 0.15);
-const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
+const lightMaterial = new THREE.MeshBasicMaterial({ color: 0xfff0b5 });
 const outlineGeometry = new THREE.BoxGeometry(0.17, 0.01, 0.17);
-const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
+const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x5a533d });
 
 // Tắt toàn bộ shader effects để tăng FPS tối đa khi khởi động
 staticPass.enabled = false;
@@ -1040,7 +1127,30 @@ gameplaySettings.add(soundControls, 'musicVolume', 0, 1, 0.01)
 // Thêm offset cho model khi crouch
 const modelCrouchYOffset = 0.15;
 
-update();
+let stamina = 1;
+const staminaSettings = {
+    drainPerSecond: 0.28,
+    recoverPerSecond: 0.18,
+    minToRun: 0.08
+};
+
+const statusPanel = document.createElement('div');
+statusPanel.id = 'statusPanel';
+statusPanel.innerHTML = `
+    <div class="status-row"><span>Stamina</span><span id="staminaText">100%</span></div>
+    <div class="meter"><div id="staminaFill"></div></div>
+    <div class="status-row"><span>Threat</span><span id="threatText">Calm</span></div>
+`;
+document.body.appendChild(statusPanel);
+const staminaText = document.getElementById('staminaText');
+const staminaFill = document.getElementById('staminaFill');
+const threatText = document.getElementById('threatText');
+
+function updateStatusPanel(threatState = null) {
+    staminaText.innerText = `${Math.round(stamina * 100)}%`;
+    staminaFill.style.width = `${Math.round(stamina * 100)}%`;
+    if (threatState) threatText.innerText = threatState;
+}
 
 function popupMessage(message) {
     if (!currentMessage)
@@ -1103,7 +1213,7 @@ function update() {
     requestAnimationFrame(update);
     
     // 2. TÍNH TOÁN DELTA TIME một lần duy nhất
-    const delta = clock.getDelta();
+    const delta = Math.min(clock.getDelta(), 0.05);
     
     if (!paused) {
         stats.begin();
@@ -1122,27 +1232,33 @@ function update() {
             if (glowstickAnimators) {
                 glowstickAnimators.forEach(anim => anim && anim.update(delta));
             }
-            if (scpAnimator) {
-                updateSCP096(delta);
-            }
 
             // 4. XỬ LÝ LOGIC GAME
             isMoving = keyState.KeyW || keyState.KeyA || keyState.KeyS || keyState.KeyD;
-            isRunning = keyState.ShiftLeft && !isCrouching;
-            isMovingBackward = keyState.KeyS;
             isCrouching = keyState.KeyC;
+            isRunning = keyState.ShiftLeft && !isCrouching && stamina > staminaSettings.minToRun;
+            isMovingBackward = keyState.KeyS;
+            if (isRunning && isMoving && !spectatorMode) {
+                stamina = Math.max(0, stamina - staminaSettings.drainPerSecond * delta);
+            } else {
+                stamina = Math.min(1, stamina + staminaSettings.recoverPerSecond * delta);
+            }
 
             let speed = playerSettings.baseSpeed;
-            if (isRunning) speed *= 3;
-            if (spectatorMode) speed *= 7;
-            speed *= (isCrouching ? 0.5 : 1.0);
+            if (isRunning) speed *= 1.75;
+            if (spectatorMode) speed *= 3.5;
+            speed *= (isCrouching ? 0.45 : 1.0);
+            speed *= delta;
 
             velocity.x = 0;
             velocity.z = 0;
-            if (keyState.KeyW) velocity.z = speed;
-            if (keyState.KeyA) velocity.x = -speed;
-            if (keyState.KeyS) velocity.z = -speed;
-            if (keyState.KeyD) velocity.x = speed;
+            if (keyState.KeyW) velocity.z += 1;
+            if (keyState.KeyA) velocity.x -= 1;
+            if (keyState.KeyS) velocity.z -= 1;
+            if (keyState.KeyD) velocity.x += 1;
+            if (velocity.lengthSq() > 0) {
+                velocity.normalize().multiplyScalar(speed);
+            }
 
             // Cập nhật animations và vị trí
             if (playerAnimator) {
@@ -1162,6 +1278,11 @@ function update() {
             
             // Kiểm tra va chạm với glowsticks
             checkGlowstickCollision();
+            checkExitDoorWin();
+            if (scpAnimator) {
+                updateSCP096Advanced(delta);
+            }
+            updateStatusPanel();
 
         } catch (error) {
             console.error("Error in game loop:", error);
@@ -1223,7 +1344,7 @@ function updateCameraAndEffects(delta) {
     }
 
     // Collectible items animation
-    scene.children.forEach(function(object) {
+    collectibleObjects.forEach(function(object) {
         if (object.userData?.isCollectible) {
             object.userData.animationTime = (object.userData.animationTime || 0) + delta * 2;
             object.position.y = (object.userData.originalY || object.position.y) + 
@@ -1237,8 +1358,6 @@ function updateCameraAndEffects(delta) {
     if (staticPass.enabled) staticPass.uniforms.time.value = shaderTime / 10;
     if (filmPass.enabled) filmPass.uniforms.time.value = shaderTime;
     if (BadTVShaderPass.enabled) BadTVShaderPass.uniforms.time.value = shaderTime;
-
-    composer.render();
 }
 
 const coordinates = document.getElementById('coordinates');
@@ -1283,40 +1402,23 @@ function isCollisionObject(object) {
     );
 }
 
+function collidesWithNearby(position, nearbyObjects, colliderSize = PLAYER_COLLIDER_SIZE) {
+    return nearbyObjects.some(object => isCollisionObject(object) && checkCollision(position, object, colliderSize));
+}
+
 //Logic trượt va chạm
 function checkWallCollisions(oldPosition) {
     var position = controls.getObject().position;
-    let collided = false;
-    scene.children?.forEach(function (object) {
-        if (isCollisionObject(object)) {
-            if (checkCollision(position, object)) {
-                collided = true;
-            }
-        }
-    });
-    if (collided) {
+    const nearbyObjects = getNearbyCollisionObjects(position);
+    if (collidesWithNearby(position, nearbyObjects)) {
         // Thử trượt dọc tường (slide):
         // Thử chỉ di chuyển X
         controls.getObject().position.set(position.x, oldPosition.y, oldPosition.z);
-        let slideX = false;
-        scene.children?.forEach(function (object) {
-            if (isCollisionObject(object)) {
-                if (checkCollision(controls.getObject().position, object)) {
-                    slideX = true;
-                }
-            }
-        });
+        let slideX = collidesWithNearby(controls.getObject().position, getNearbyCollisionObjects(controls.getObject().position));
         if (slideX) {
             // Thử chỉ di chuyển Z
             controls.getObject().position.set(oldPosition.x, oldPosition.y, position.z);
-            let slideZ = false;
-            scene.children?.forEach(function (object) {
-                if (isCollisionObject(object)) {
-                    if (checkCollision(controls.getObject().position, object)) {
-                        slideZ = true;
-                    }
-                }
-            });
+            let slideZ = collidesWithNearby(controls.getObject().position, getNearbyCollisionObjects(controls.getObject().position));
             if (slideZ) {
                 // Không trượt được, trả về vị trí cũ
                 controls.getObject().position.copy(oldPosition);
@@ -1326,22 +1428,26 @@ function checkWallCollisions(oldPosition) {
 }
 
 // Kiểm tra va chạm
-function checkCollision(position, wall) {
-    var boxSize = new THREE.Vector3(0.32, 1.0, 0.32);
+function checkCollision(position, wall, boxSize = PLAYER_COLLIDER_SIZE) {
+    const geometry = wall.geometry;
+    if (!geometry || !geometry.parameters) return false;
+    const width = (wall.userData.collisionWidth || geometry.parameters.width || 1) * wall.scale.x;
+    const height = (geometry.parameters.height || 1) * wall.scale.y;
+    const depth = (wall.userData.collisionDepth || geometry.parameters.depth || 1) * wall.scale.z;
 
     return (
-        position.x + boxSize.x / 2 >= wall.position.x - wall.geometry.parameters.width / 2 &&
-        position.x - boxSize.x / 2 <= wall.position.x + wall.geometry.parameters.width / 2 &&
-        position.z + boxSize.z / 2 >= wall.position.z - wall.geometry.parameters.depth / 2 &&
-        position.z - boxSize.z / 2 <= wall.position.z + wall.geometry.parameters.depth / 2 &&
-        position.y + boxSize.y / 2 >= wall.position.y - wall.geometry.parameters.height / 2 &&
-        position.y - boxSize.y / 2 <= wall.position.y + wall.geometry.parameters.height / 2
+        position.x + boxSize.x / 2 >= wall.position.x - width / 2 &&
+        position.x - boxSize.x / 2 <= wall.position.x + width / 2 &&
+        position.z + boxSize.z / 2 >= wall.position.z - depth / 2 &&
+        position.z - boxSize.z / 2 <= wall.position.z + depth / 2 &&
+        position.y + boxSize.y / 2 >= wall.position.y - height / 2 &&
+        position.y - boxSize.y / 2 <= wall.position.y + height / 2
     );
 }
 
-scene.fog = new THREE.FogExp2(0x222222, 0.17);
+scene.fog = new THREE.FogExp2(0x181812, 0.115);
 
-renderer.setClearColor(0x222222);
+renderer.setClearColor(0x181812);
 
 // Tạo ánh sáng
 function createLights() {
@@ -1384,7 +1490,7 @@ function createLightSources(offsetX, offsetZ){
             const wz = (j - MAP_HEIGHT / 2) + (offsetZ * MAP_HEIGHT);
             // Chỉ tạo light nếu gần player
             if (Math.abs(wx - playerPos.x) <= lightRadius && Math.abs(wz - playerPos.z) <= lightRadius) {
-                const lightSource = new THREE.PointLight(0x222222, 1.1, 3.1);
+                const lightSource = new THREE.PointLight(0xffedb0, 1.15, 3.4);
                 lightSource.position.x = wx;
             lightSource.position.y = 0.85;
                 lightSource.position.z = wz;
@@ -1394,9 +1500,6 @@ function createLightSources(offsetX, offsetZ){
         }
     }
 }
-
-createLights(0,0);
-createLightSources(0,0);
 
 function deleteLightsExceptOffset(offsetX, offsetZ) {
     for (var i = scene.children.length - 1; i >= 0; i--) {
@@ -1416,7 +1519,6 @@ function deleteLights() {
     }
 }
 
-update();
 
 // Thêm xử lý phím E để interact với cửa:
 document.addEventListener('keydown', function (event) {
@@ -1478,9 +1580,12 @@ for (let y = 0; y < MAP_HEIGHT; y++) {
     if (cellValue >= 4 && cellValue <= 7) {
       loadGlowstick(scene, { x: x - MAP_WIDTH / 2, y: 0.05, z: y - MAP_HEIGHT / 2 }, (glowstick, mixer, animator) => {
         glowstick.userData.isGlowstick = true;
+        glowstick.userData.isCollectible = true;
+        glowstick.userData.originalY = glowstick.position.y;
         glowstick.userData.animator = animator;
         glowstick.userData.cellValue = cellValue;
         glowstickAnimators.push(animator);
+        collectibleObjects.push(glowstick);
         
         // Tối ưu vật liệu cho glowstick
         glowstick.traverse((child) => {
@@ -1521,7 +1626,7 @@ function checkGlowstickCollision() {
     const objectsToRemove = [];
     
     try {
-        scene.children.forEach(function (object) {
+        collectibleObjects.forEach(function (object) {
             if (object.userData && object.userData.isGlowstick) {
                 const dx = playerPosition.x - object.position.x;
                 const dz = playerPosition.z - object.position.z;
@@ -1543,6 +1648,8 @@ function checkGlowstickCollision() {
             
             // Sau đó xóa object
             scene.remove(object);
+            const collectibleIndex = collectibleObjects.indexOf(object);
+            if (collectibleIndex > -1) collectibleObjects.splice(collectibleIndex, 1);
             glowstickCount++;
             updateGlowstickCounter();
             
@@ -1558,6 +1665,21 @@ function checkGlowstickCollision() {
 }
 
 // Thêm hàm xử lý chiến thắng
+let gameWon = false;
+
+function checkExitDoorWin() {
+    if (gameWon) return;
+    const playerPosition = controls.getObject().position;
+    const exitCollider = collisionObjects.find(object => object.userData?.cellType === 'exitDoor' && object.userData.animator?.isOpen());
+    if (!exitCollider) return;
+    const dx = playerPosition.x - exitCollider.position.x;
+    const dz = playerPosition.z - exitCollider.position.z;
+    if (Math.sqrt(dx * dx + dz * dz) < 0.75) {
+        gameWon = true;
+        handleGameWin();
+    }
+}
+
 function handleGameWin() {
     // Hiển thị thông báo chiến thắng
     popupMessage("Chúc mừng! Bạn đã thoát khỏi Backrooms!");
@@ -1763,6 +1885,7 @@ function findPathPoints() {
 let isAttacking = false;
 let attackStartTime = 0;
 let deathScreen = null;
+let gameOver = false;
 
 // Thêm hàm tạo màn hình đỏ khi chết
 function createDeathScreen() {
@@ -2020,8 +2143,303 @@ function updateSCP096(delta) {
 }
 
 // Thêm hàm xử lý thua game
+const SCP_AI_STATES = {
+    PATROL: 'Patrol',
+    INVESTIGATE: 'Investigate',
+    CHASE: 'Chase',
+    SEARCH: 'Search'
+};
+
+let scpAIState = SCP_AI_STATES.PATROL;
+let scpPath = [];
+let scpPathIndex = 0;
+let scpPathRefreshTimer = 0;
+let scpSearchTimer = 0;
+let scpLastSfxTime = {};
+
+function worldToMapCell(position) {
+    return {
+        x: Math.round(position.x + MAP_WIDTH / 2),
+        y: Math.round(position.z + MAP_HEIGHT / 2)
+    };
+}
+
+function cellToWorld(cell) {
+    return new THREE.Vector3(cell.x - MAP_WIDTH / 2, 0, cell.y - MAP_HEIGHT / 2);
+}
+
+function isWalkableCell(x, y) {
+    const value = getCellValue(x, y);
+    return value !== 1 && value !== 3 && value !== 10;
+}
+
+function hasGridLineOfSight(fromPos, toPos) {
+    const from = worldToMapCell(fromPos);
+    const to = worldToMapCell(toPos);
+    let x0 = from.x;
+    let y0 = from.y;
+    const x1 = to.x;
+    const y1 = to.y;
+    const dx = Math.abs(x1 - x0);
+    const dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+
+    while (true) {
+        const value = getCellValue(x0, y0);
+        if (value === 1 || value === 3) return false;
+        if (x0 === x1 && y0 === y1) return true;
+        const e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+function findGridPath(startCell, endCell) {
+    if (!isWalkableCell(endCell.x, endCell.y)) return [];
+
+    const startKey = `${startCell.x},${startCell.y}`;
+    const endKey = `${endCell.x},${endCell.y}`;
+    const open = [{ x: startCell.x, y: startCell.y, g: 0, f: 0 }];
+    const cameFrom = new Map();
+    const gScore = new Map([[startKey, 0]]);
+    const closed = new Set();
+    const directions = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 }
+    ];
+
+    while (open.length > 0) {
+        open.sort((a, b) => a.f - b.f);
+        const current = open.shift();
+        const currentKey = `${current.x},${current.y}`;
+        if (currentKey === endKey) {
+            const path = [{ x: current.x, y: current.y }];
+            let stepKey = currentKey;
+            while (cameFrom.has(stepKey)) {
+                const previous = cameFrom.get(stepKey);
+                path.push(previous);
+                stepKey = `${previous.x},${previous.y}`;
+            }
+            return path.reverse();
+        }
+        if (closed.has(currentKey)) continue;
+        closed.add(currentKey);
+
+        for (const dir of directions) {
+            const next = { x: current.x + dir.x, y: current.y + dir.y };
+            if (!isWalkableCell(next.x, next.y)) continue;
+            const nextKey = `${next.x},${next.y}`;
+            if (closed.has(nextKey)) continue;
+            const tentativeG = (gScore.get(currentKey) || 0) + 1;
+            if (tentativeG >= (gScore.get(nextKey) ?? Infinity)) continue;
+            cameFrom.set(nextKey, { x: current.x, y: current.y });
+            gScore.set(nextKey, tentativeG);
+            const heuristic = Math.abs(next.x - endCell.x) + Math.abs(next.y - endCell.y);
+            open.push({ x: next.x, y: next.y, g: tentativeG, f: tentativeG + heuristic });
+        }
+    }
+
+    return [];
+}
+
+function isSolidForMonster(object) {
+    const type = object.userData?.cellType;
+    return type === 'wall' || type === 'column' || type === 'exitDoor';
+}
+
+function lerpAngle(from, to, amount) {
+    const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+    return from + delta * amount;
+}
+
+function canMonsterMoveTo(position) {
+    return !getNearbyCollisionObjects(position, 2).some(object => {
+        return isSolidForMonster(object) && checkCollision(position, object, MONSTER_COLLIDER_SIZE);
+    });
+}
+
+function rotateSCPToDirection(direction) {
+    if (direction.lengthSq() === 0) return;
+    const targetAngle = Math.atan2(direction.x, direction.z);
+    scp096.rotation.y = lerpAngle(scp096.rotation.y, targetAngle, 0.22);
+}
+
+function moveSCPTo(targetPosition, speed, delta) {
+    const direction = new THREE.Vector3(targetPosition.x - scp096.position.x, 0, targetPosition.z - scp096.position.z);
+    const distance = direction.length();
+    if (distance < 0.08) return true;
+
+    direction.normalize();
+    const step = Math.min(speed * delta, distance);
+    const nextPosition = scp096.position.clone().addScaledVector(direction, step);
+    if (canMonsterMoveTo(nextPosition)) {
+        scp096.position.x = nextPosition.x;
+        scp096.position.z = nextPosition.z;
+        rotateSCPToDirection(direction);
+    } else {
+        scpPathRefreshTimer = 0;
+    }
+    return distance < 0.18;
+}
+
+function followSCPPath(speed, delta) {
+    if (!scpPath.length || scpPathIndex >= scpPath.length) return true;
+    const target = cellToWorld(scpPath[scpPathIndex]);
+    const reached = moveSCPTo(target, speed, delta);
+    if (reached) scpPathIndex++;
+    return scpPathIndex >= scpPath.length;
+}
+
+function setSCPPathTo(targetPosition) {
+    const start = worldToMapCell(scp096.position);
+    const end = worldToMapCell(targetPosition);
+    scpPath = findGridPath(start, end);
+    scpPathIndex = Math.min(1, scpPath.length);
+    scpPathRefreshTimer = 0.35;
+}
+
+function playSCPSFXThrottled(name, volume, delay = 2.5) {
+    const now = performance.now() / 1000;
+    if ((scpLastSfxTime[name] || 0) + delay > now) return;
+    scpLastSfxTime[name] = now;
+    audio.playSFX(name, volume);
+}
+
+function updateSCP096Advanced(delta) {
+    if (!scp096 || !scpAnimator || paused) return;
+
+    const playerPos = controls.getObject().position;
+    const scpPos = scp096.position;
+    const distToPlayer = playerPos.distanceTo(scpPos);
+    const idleVolume = distToPlayer < 12 ? audio.sfxVolume * (1 - distToPlayer / 12) : 0;
+    const screamVolume = distToPlayer < 30 ? audio.sfxVolume * (1 - distToPlayer / 30) : 0;
+
+    if (distToPlayer < 30) {
+        if (!audio.scpSoundEnabled) audio.playSCPSound();
+        audio.updateSCPSoundVolume(distToPlayer);
+    } else if (audio.scpSoundEnabled) {
+        audio.stopSCPSound();
+    }
+
+    if (spectatorMode) {
+        scpAnimator.update(delta);
+        updateStatusPanel('Spectator');
+        return;
+    }
+
+    if (isAttacking) {
+        const attackDuration = 0.6;
+        const currentTime = performance.now() / 1000;
+        if (currentTime - attackStartTime < attackDuration) {
+            const lookAtPos = new THREE.Vector3(scpPos.x, scpPos.y + 0.5, scpPos.z);
+            controls.lookAt(lookAtPos);
+            const dir = new THREE.Vector3(playerPos.x - scpPos.x, 0, playerPos.z - scpPos.z).normalize();
+            scp096.position.copy(playerPos.clone().sub(dir.multiplyScalar(0.7)));
+            scp096.position.y = 0;
+            scp096.lookAt(playerPos);
+            scpAnimator.playAnimation(SCP096_ANIMATION_STATES.ATTACK2);
+            playSCPSFXThrottled('attackscp', Math.max(0.2, screamVolume), 0.8);
+        } else {
+            isAttacking = false;
+            handleGameOver();
+        }
+        scpAnimator.update(delta);
+        updateStatusPanel('Attack');
+        return;
+    }
+
+    const playerIsNoisy = isRunning || (!isCrouching && isMoving);
+    const hearingRange = isRunning ? 13 : (isCrouching ? 2.2 : 7);
+    const canSeePlayer = !isCrouching && distToPlayer < 14 && hasGridLineOfSight(scpPos, playerPos);
+    const canHearPlayer = playerIsNoisy && distToPlayer < hearingRange;
+
+    if (canSeePlayer) {
+        scpAIState = SCP_AI_STATES.CHASE;
+        scpLastSeenPlayer = playerPos.clone();
+        scpSearchTimer = 3.5;
+    } else if (canHearPlayer && scpAIState !== SCP_AI_STATES.CHASE) {
+        scpAIState = SCP_AI_STATES.INVESTIGATE;
+        scpLastSeenPlayer = playerPos.clone();
+        scpSearchTimer = 2.5;
+    } else if (scpAIState === SCP_AI_STATES.CHASE) {
+        scpSearchTimer -= delta;
+        if (scpSearchTimer <= 0) scpAIState = SCP_AI_STATES.SEARCH;
+    }
+
+    if (distToPlayer < 1.35) {
+        isAttacking = true;
+        attackStartTime = performance.now() / 1000;
+        if (!deathScreen) deathScreen = createDeathScreen();
+        scpAnimator.update(delta);
+        return;
+    }
+
+    scpPathRefreshTimer -= delta;
+
+    if (scpAIState === SCP_AI_STATES.CHASE || scpAIState === SCP_AI_STATES.INVESTIGATE || scpAIState === SCP_AI_STATES.SEARCH) {
+        const target = scpAIState === SCP_AI_STATES.CHASE ? playerPos : scpLastSeenPlayer;
+        const speed = scpAIState === SCP_AI_STATES.CHASE ? scpRunSpeed : scpSpeed * 1.35;
+        if (target && scpPathRefreshTimer <= 0) setSCPPathTo(target);
+        const arrived = followSCPPath(speed, delta);
+        scpAnimator.playAnimation(scpAIState === SCP_AI_STATES.CHASE ? SCP096_ANIMATION_STATES.RUN : SCP096_ANIMATION_STATES.WALK);
+        if (arrived && scpAIState !== SCP_AI_STATES.CHASE) {
+            scpAIState = SCP_AI_STATES.SEARCH;
+            scpSearchTimer -= delta;
+            scpAnimator.playAnimation(SCP096_ANIMATION_STATES.IDLE2);
+            if (idleVolume > 0.01) playSCPSFXThrottled('idlescp', idleVolume, 4);
+            if (scpSearchTimer <= 0) {
+                scpAIState = SCP_AI_STATES.PATROL;
+                scpPath = [];
+            }
+        }
+        updateStatusPanel(scpAIState);
+        scpAnimator.update(delta);
+        return;
+    }
+
+    if (scpPathPoints.length === 0) scpPathPoints = findPathPoints();
+    let nextNumber = scpCurrentNumber + scpDirection;
+    if (nextNumber > scpMaxNumber) {
+        scpDirection = -1;
+        nextNumber = scpCurrentNumber - 1;
+    } else if (nextNumber < 23) {
+        scpDirection = 1;
+        nextNumber = scpCurrentNumber + 1;
+    }
+
+    const nextPoint = scpPathPoints.find(p => p.number === nextNumber);
+    if (nextPoint) {
+        const reached = moveSCPTo(new THREE.Vector3(nextPoint.x, 0, nextPoint.z), scpSpeed, delta);
+        scpAnimator.playAnimation(SCP096_ANIMATION_STATES.WALK);
+        if (reached) {
+            scpCurrentNumber = nextNumber;
+            if (Math.random() < 0.025) {
+                scpAnimator.playAnimation(SCP096_ANIMATION_STATES.SCREAM);
+                if (screamVolume > 0.01) playSCPSFXThrottled('screamscp', screamVolume, 8);
+            }
+        }
+    } else {
+        scpAnimator.playAnimation(SCP096_ANIMATION_STATES.IDLE1);
+    }
+
+    updateStatusPanel(SCP_AI_STATES.PATROL);
+    scpAnimator.update(delta);
+}
+
 function handleGameOver() {
+    gameOver = true;
     paused = true;
+    controls.unlock();
     
     // Hiển thị màn hình đỏ
     if (deathScreen) {
@@ -2035,9 +2453,49 @@ function handleGameOver() {
         title.style.display = 'block';
     }
     startButton.style.display = 'none';
+    respawnButton.style.display = 'block';
     const loading = document.querySelector('#menuPanel [id*="loading"], #menuPanel .loading, #menuPanel [class*="loading"]');
     if (loading) loading.style.display = 'none';
     menuPanel.style.display = 'block';
     audio.playSFX('gameover');
     audio.playSFX('pain'); // Phát SFX đau khi chết
 }
+
+function respawnPlayer() {
+    gameOver = false;
+    isAttacking = false;
+    paused = false;
+    stamina = 1;
+    Object.keys(keyState).forEach(function (key) {
+        keyState[key] = false;
+    });
+
+    controls.getObject().position.set(spawnPos.x, cameraYFromGUI, spawnPos.z);
+    if (playerModel) {
+        playerModel.position.set(spawnPos.x, 0, spawnPos.z);
+    }
+
+    if (scp096 && scpSpawn) {
+        scp096.position.set(scpSpawn.x, scpSpawn.y, scpSpawn.z);
+        scpAIState = SCP_AI_STATES.PATROL;
+        scpPath = [];
+        scpPathIndex = 0;
+        scpSearchTimer = 0;
+        scpPathRefreshTimer = 0;
+    }
+
+    if (deathScreen) {
+        deathScreen.style.opacity = '0';
+    }
+    audio.stopSCPSound();
+    updateStatusPanel('Calm');
+
+    const title = document.getElementById('title');
+    if (title) title.style.display = 'none';
+    startButton.style.display = 'none';
+    respawnButton.style.display = 'none';
+    menuPanel.style.display = 'none';
+    controls.lock();
+}
+
+update();

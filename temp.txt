@@ -1,0 +1,5 @@
+Đây là project cũ của nhóm mình, lúc đó vì không đủ thời gian nên chỉ làm vội thôi. Giờ mình muốn fix tất cả lỗi và nâng cấp nó toàn diện. Các thứ mà mình nhớ là nó vẫn lỗi là:
+- Điều khiển, xoay camera cực kì bất ổn, thường xuyên bị lật hay giật giật
+- Tối ưu cực kém, chơi rất lag
+- Quái vật chưa có AI, chỉ đi theo map đã định
+- Game còn quá đơn giản nên mình cần bạn nâng cấp toàn diện

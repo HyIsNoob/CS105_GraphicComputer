@@ -26,8 +26,8 @@ class PointerLockControls extends EventDispatcher {
 
 		this.isLocked = false;
 		
-		this.minPolarAngle = Math.PI / 4; // Giới hạn ngửa trên
-		this.maxPolarAngle = Math.PI / 1.1; // Giới hạn cúi người
+		this.minPolarAngle = 0;
+		this.maxPolarAngle = Math.PI;
 
 		this.pointerSpeed = 1.0;
 
@@ -105,6 +105,21 @@ class PointerLockControls extends EventDispatcher {
 		_vector.setFromMatrixColumn( camera.matrix, 1 );
 
 		camera.position.addScaledVector( _vector, distance );
+
+	}
+
+	lookAt( target ) {
+
+		const camera = this.camera;
+		_vector.copy( target ).sub( camera.position ).normalize();
+
+		_euler.y = Math.atan2( - _vector.x, - _vector.z );
+		_euler.x = Math.asin( Math.max( - 1, Math.min( 1, _vector.y ) ) );
+		_euler.z = 0;
+		_euler.x = Math.max( _PI_2 - this.maxPolarAngle + 0.01, Math.min( _PI_2 - this.minPolarAngle - 0.01, _euler.x ) );
+
+		camera.quaternion.setFromEuler( _euler );
+		this.dispatchEvent( _changeEvent );
 
 	}
 

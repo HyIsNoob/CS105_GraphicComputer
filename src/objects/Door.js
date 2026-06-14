@@ -32,6 +32,9 @@ export class DoorAnimator {
   
   playAnimation(stateName, loop = false) {
     const newAction = this.actions[stateName];
+    if (!newAction) {
+      return;
+    }
     if (this.currentAction && this.currentAction !== newAction) {
       this.currentAction.stop();
     }
@@ -61,7 +64,7 @@ export class DoorAnimator {
         setTimeout(() => {
           if (this.currentState === DOOR_STATES.OPEN) {
             // Không phát lại animation đóng, chỉ chuyển trạng thái
-            this.currentState = DOOR_STATES.CLOSED;
+            this.currentState = DOOR_STATES.OPEN;
           }
         }, 2000);
       }
@@ -112,7 +115,7 @@ export class DoorAnimator {
   }
   
   isOpen() {
-    return this.currentState === DOOR_STATES.OPEN;
+    return this.currentState === DOOR_STATES.OPEN || this.currentState === DOOR_STATES.OPENING;
   }
   
   isClosed() {
@@ -141,6 +144,17 @@ export function loadDoor(scene, position = { x: 0, y: 0, z: 0 }, onLoaded) {
     });
     
     scene.add(door);
+
+    const colliderGeometry = new THREE.BoxGeometry(0.95, 1.5, 0.18);
+    const colliderMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    const collider = new THREE.Mesh(colliderGeometry, colliderMaterial);
+    collider.position.copy(door.position);
+    collider.position.y += 0.75;
+    collider.rotation.copy(door.rotation);
+    collider.userData.isMapObject = true;
+    collider.userData.cellType = 'door';
+    collider.identifier = '0,0,doorCollider';
+    scene.add(collider);
     
     // Thiết lập hoạt ảnh
     let mixer = null;
@@ -149,9 +163,10 @@ export function loadDoor(scene, position = { x: 0, y: 0, z: 0 }, onLoaded) {
     if (gltf.animations && gltf.animations.length > 0) {
       mixer = new THREE.AnimationMixer(door);
       animator = new DoorAnimator(mixer, gltf.animations, door);
+      collider.userData.animator = animator;
     }
     
-    if (onLoaded) onLoaded(door, mixer, animator);
+    if (onLoaded) onLoaded(door, mixer, animator, collider);
   }, undefined, (error) => {
     console.error('Door load error:', error);
   });

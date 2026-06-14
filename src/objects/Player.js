@@ -51,6 +51,9 @@ export class PlayerAnimator {
 
   playAnimation(stateName, crossfadeDuration = 0.2) {
     const newAction = this.actions[stateName];
+    if (!newAction) {
+      return;
+    }
     if (this.currentState === stateName) {
       return;
     }

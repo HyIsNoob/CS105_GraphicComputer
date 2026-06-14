@@ -38,6 +38,9 @@ export class EndingDoorAnimator {
   
   playAnimation(stateName) {
     const newAction = this.actions[stateName];
+    if (!newAction) {
+      return;
+    }
     
     if (this.currentAction && this.currentAction !== newAction) {
       this.currentAction.stop();
@@ -122,7 +125,7 @@ export function loadEndingDoor(scene, position = { x: 0, y: 0, z: 0 }, onLoaded)
       collider.userData.animator = animator;
     }
     
-    if (onLoaded) onLoaded(door, mixer, animator);
+    if (onLoaded) onLoaded(door, mixer, animator, collider);
   }, undefined, (error) => {
     console.error('Ending door load error:', error);
   });
